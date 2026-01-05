@@ -1,5 +1,5 @@
 import 'dart:convert';
-
+import 'package:techzonex_erp/services/storage_service.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 import 'package:techzonex_erp/services/api_service.dart';
@@ -32,6 +32,23 @@ class LoginController extends GetxController {
 
   // Initialise ApiService
   final ApiService _apiService = Get.put(ApiService());
+
+  // Initialise StorageService dependency
+  final StorageService _storageService = Get.find();
+
+  @override
+  void onInit() {
+    super.onInit();
+    _loadSavedServerUrl();
+  }
+
+  /// Loads the persisted URL from SQLite or LocalStorage
+  Future<void> _loadSavedServerUrl() async {
+    final String? savedUrl = await _storageService.getServerUrl();
+    if (savedUrl != null && savedUrl.isNotEmpty) {
+      serverUrlController.text = savedUrl;
+    }
+  }
 
   /// Determines the input type and validates accordingly
   String? validateUserField(String? value) {
@@ -78,6 +95,10 @@ class LoginController extends GetxController {
       url = url.substring(0, url.length - 1);
     }
     serverUrlController.text = url;
+
+    // PERSISTENCE: Save to DB/LocalStorage
+    _storageService.saveServerUrl(url);
+
     Get.back(); // Close Dialog
     GlobalSnackbar.showInfo(title: 'Configuration', message: 'Server connected: $url',);
   }

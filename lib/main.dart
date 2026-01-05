@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:techzonex_erp/login/login_view.dart';
+import 'package:techzonex_erp/services/storage_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialise Storage Service (SQLite/Web Storage) before app launch
+  await Get.putAsync(() => StorageService().init());
+
   runApp(const MyApp());
 }
 
