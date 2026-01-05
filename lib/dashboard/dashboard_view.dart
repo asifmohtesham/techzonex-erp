@@ -27,38 +27,40 @@ class DashboardView extends StatelessWidget {
 
   Widget _buildNavigationDrawer(BuildContext context, DashboardController controller) {
     return Drawer(
-      child: Column(
-        children: [
-          // User Profile Header
-          Obx(() => UserAccountsDrawerHeader(
-            decoration: const BoxDecoration(
-              color: Colors.blueAccent,
-            ),
-            currentAccountPicture: CircleAvatar(
-              backgroundColor: Colors.white,
-              child: Text(
-                controller.fullName.value.isNotEmpty
-                    ? controller.fullName.value[0].toUpperCase()
-                    : 'U',
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+      child: SafeArea(
+        child: Column(
+          children: [
+            // User Profile Header
+            Obx(() => UserAccountsDrawerHeader(
+              decoration: const BoxDecoration(
+                color: Colors.blueAccent,
               ),
-            ),
-            accountName: Text(
-              controller.fullName.value,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            accountEmail: Text(controller.userId.value),
-            // Shows arrow icon and handles toggle interaction
-            onDetailsPressed: controller.toggleAccountMenu,
-          )),
+              currentAccountPicture: CircleAvatar(
+                backgroundColor: Colors.white,
+                child: Text(
+                  controller.fullName.value.isNotEmpty
+                      ? controller.fullName.value[0].toUpperCase()
+                      : 'U',
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+              ),
+              accountName: Text(
+                controller.fullName.value,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              accountEmail: Text(controller.userId.value),
+              // Shows arrow icon and handles toggle interaction
+              onDetailsPressed: controller.toggleAccountMenu,
+            )),
 
-          // Dynamic Menu Content
-          Expanded(
-            child: Obx(() => controller.isAccountMenuExpanded.value
-                ? _buildAccountMenu(controller)
-                : _buildMainMenu(controller)),
-          ),
-        ],
+            // Dynamic Menu Content
+            Expanded(
+              child: Obx(() => controller.isAccountMenuExpanded.value
+                  ? _buildAccountMenu(controller)
+                  : _buildMainMenu(controller)),
+            ),
+          ],
+        ),
       ),
     );
   }

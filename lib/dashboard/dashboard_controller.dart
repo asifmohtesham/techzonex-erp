@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart'; // Added for Icons/Colors if needed in logic, though mostly for View
+import 'package:flutter/material.dart'; // Added for Icons/Colours if needed in logic, though mostly for View
 import 'package:get/get.dart';
+import 'package:techzonex_erp/widgets/frappe_list_view.dart';
 import 'package:techzonex_erp/login/login_view.dart';
 import 'package:techzonex_erp/widgets/global_snackbar.dart';
 
@@ -57,13 +58,28 @@ class DashboardController extends GetxController {
 
   /// Navigation Handler for DocTypes
   void navigateToDocTypeList(String module, String docType) {
-    // Placeholder: In a real app, this would push a reusable ListView route
-    // e.g., Get.to(() => DocTypeListView(), arguments: {'doctype': docType});
     Get.back(); // Close Drawer
-    GlobalSnackbar.showInfo(
-      title: module,
-      message: 'Opening $docType list view...',
-    );
+
+    // Define custom configurations per DocType if needed
+    FrappeListConfig config;
+
+    switch (docType) {
+      case 'Item':
+        config = FrappeListConfig(titleField: 'item_name', subtitleField: 'item_code');
+        break;
+      case 'Customer':
+        config = FrappeListConfig(titleField: 'customer_name', subtitleField: 'customer_type');
+        break;
+      case 'Sales Invoice':
+        config = FrappeListConfig(titleField: 'customer_name', subtitleField: 'grand_total', statusField: 'status');
+        break;
+      default:
+      // Default fallbacks to 'name', 'modified', 'status'
+        config = FrappeListConfig();
+    }
+
+    // Navigate to the Generic ListView
+    Get.to(() => FrappeListView(docType: docType, config: config));
   }
 
   // --- Profile Context Actions ---

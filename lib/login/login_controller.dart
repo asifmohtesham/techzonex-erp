@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
+import 'package:techzonex_erp/services/api_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:techzonex_erp/widgets/global_snackbar.dart';
 import 'package:techzonex_erp/dashboard/dashboard_view.dart';
@@ -28,6 +29,9 @@ class LoginController extends GetxController {
 
   // Password: At least 1 letter, 1 number, 1 special char, min 8 chars
   final RegExp _passwordStrictRegex = RegExp(r'^(?=.*[a-zA-Z])(?=.*[0-9])(?=.*[!@#\$&*~]).{8,}$');
+
+  // Initialise ApiService
+  final ApiService _apiService = Get.put(ApiService());
 
   /// Determines the input type and validates accordingly
   String? validateUserField(String? value) {
@@ -113,7 +117,7 @@ class LoginController extends GetxController {
           // CRITICAL: Capture Session Cookie (sid) for future requests
           String? rawCookie = response.headers['set-cookie'];
           if (rawCookie != null) {
-            print('Session ID captured: $rawCookie');
+            _apiService.setSessionCookie(rawCookie);
           }
 
           GlobalSnackbar.showSuccess(
