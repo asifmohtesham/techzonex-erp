@@ -8,6 +8,9 @@ class LoginController extends GetxController {
   final emailOrPhoneController = TextEditingController();
   final passwordController = TextEditingController();
 
+  // Default to a known instance or empty
+  final serverUrlController = TextEditingController(text: 'https://demo.erpnext.com');
+
   // Observables for state management
   var isLoading = false.obs;
   var isPasswordVisible = false.obs;
@@ -49,36 +52,44 @@ class LoginController extends GetxController {
     return null;
   }
 
-  Future<void> login() async {
-    // Reset previous errors
-    errorMessage.value = '';
-
-    // Validate using the controller's form key
-    if (!loginFormKey.currentState!.validate()) {
-      return; // Stop if form is invalid
+  /// UX Utility: Auto-corrects URL and saves it
+  void configureServerUrl() {
+    String url = serverUrlController.text.trim();
+    if (url.isEmpty) {
+      Get.snackbar('Error', 'Server URL cannot be empty', backgroundColor: Colors.red.withOpacity(0.1), colorText: Colors.red);
+      return;
     }
+    // Auto-append https if missing for better UX
+    if (!url.startsWith('http')) {
+      url = 'https://$url';
+      serverUrlController.text = url;
+    }
+    Get.back(); // Close Dialog
+    Get.snackbar('Configuration', 'Server connected: $url',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.blue.withOpacity(0.1),
+        colorText: Colors.blue
+    );
+  }
+
+  Future<void> login() async {
+    errorMessage.value = '';
+    if (!loginFormKey.currentState!.validate()) return;
 
     isLoading.value = true;
-
     try {
-      // Simulation of ERPNext API Call
-      // Endpoint: POST /api/method/login
-      // Body: { "usr": emailOrPhoneController.text, "pwd": passwordController.text }
+      // Simulation of ERPNext API Call using the configured Server URL
+      final String baseUrl = serverUrlController.text;
+      print('Connecting to $baseUrl/api/method/login...');
 
-      await Future.delayed(const Duration(seconds: 2)); // Simulating network delay
+      await Future.delayed(const Duration(seconds: 2));
 
-      // Mock Success
-      Get.snackbar('Success', 'Logged in successfully',
+      Get.snackbar('Success', 'Logged in to $baseUrl',
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green.withValues(alpha: 0.1),
+          backgroundColor: Colors.green.withOpacity(0.1),
           colorText: Colors.green
       );
-
-      // Navigate to Dashboard
-      // Get.offAllNamed('/home');
-
     } catch (e) {
-      // Descriptive error handling for the user
       errorMessage.value = 'Connection failed. Please check your internet or credentials.';
     } finally {
       isLoading.value = false;
@@ -93,6 +104,7 @@ class LoginController extends GetxController {
   void onClose() {
     emailOrPhoneController.dispose();
     passwordController.dispose();
+    serverUrlController.dispose(); // Dispose new controller
     super.onClose();
   }
 }

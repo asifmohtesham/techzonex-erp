@@ -10,6 +10,19 @@ class LoginView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Minimalist AppBar for Configuration Actions
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined, color: Colors.grey),
+            tooltip: 'Configure Server',
+            onPressed: () => _showServerDialog(context),
+          ),
+          const SizedBox(width: 16),
+        ],
+      ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -102,6 +115,48 @@ class LoginView extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  // Best UX: Use a dialog to keep context, rather than navigating away
+  void _showServerDialog(BuildContext context) {
+    Get.defaultDialog(
+      title: 'Server Configuration',
+      titlePadding: const EdgeInsets.only(top: 20),
+      contentPadding: const EdgeInsets.all(24),
+      radius: 8,
+      content: Column(
+        children: [
+          const Text(
+            'Enter the URL of your ERPNext instance.',
+            style: TextStyle(color: Colors.grey, fontSize: 13),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 20),
+          TextFormField(
+            controller: controller.serverUrlController,
+            keyboardType: TextInputType.url,
+            decoration: const InputDecoration(
+              labelText: 'Server URL',
+              hintText: 'https://example.com',
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.dns_outlined),
+              isDense: true,
+            ),
+          ),
+        ],
+      ),
+      confirm: SizedBox(
+        width: 120,
+        child: ElevatedButton(
+          onPressed: controller.configureServerUrl,
+          child: const Text('Save'),
+        ),
+      ),
+      cancel: TextButton(
+        onPressed: () => Get.back(),
+        child: const Text('Cancel'),
       ),
     );
   }
