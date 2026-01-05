@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:techzonex_erp/services/api_service.dart';
@@ -14,7 +15,7 @@ class FrappeListConfig {
   FrappeListConfig({
     this.titleField = 'name',
     this.subtitleField = 'modified',
-    this.statusField = 'status',
+    this.statusField, // Defaults to null to prevent "Field not permitted" errors
     this.imageField, // Defaults to null
   });
 }
@@ -39,7 +40,7 @@ class FrappeStatusHelper {
   }
 
   /// Returns the appropriate color based on the status label
-  static Color getColor(String status) {
+  static Color getColour(String status) {
     switch (status.toLowerCase()) {
     // Success / Good State
       case 'paid':
@@ -203,19 +204,21 @@ class FrappeListView extends StatelessWidget {
 
         return RefreshIndicator(
           onRefresh: () async => await controller.fetchItems(isRefresh: true),
-          child: ListView.separated(
-            controller: controller.scrollController,
-            padding: const EdgeInsets.all(12),
-            itemCount: controller.itemList.length + (controller.isMoreLoading.value ? 1 : 0),
-            separatorBuilder: (_, __) => const Divider(height: 1),
-            itemBuilder: (ctx, index) {
-              if (index == controller.itemList.length) {
-                return const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()));
-              }
+          child: SafeArea(
+            child: ListView.separated(
+              controller: controller.scrollController,
+              padding: const EdgeInsets.all(12),
+              itemCount: controller.itemList.length + (controller.isMoreLoading.value ? 1 : 0),
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (ctx, index) {
+                if (index == controller.itemList.length) {
+                  return const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()));
+                }
 
-              final item = controller.itemList[index];
-              return _buildListItem(item, controller.config);
-            },
+                final item = controller.itemList[index];
+                return _buildListItem(item, controller.config);
+              },
+            ),
           ),
         );
       }),
@@ -265,7 +268,7 @@ class FrappeListView extends StatelessWidget {
           statusLabel,
           style: const TextStyle(fontSize: 10, color: Colors.white),
         ),
-        backgroundColor: FrappeStatusHelper.getColor(statusLabel),
+        backgroundColor: FrappeStatusHelper.getColour(statusLabel),
         padding: EdgeInsets.zero,
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       )

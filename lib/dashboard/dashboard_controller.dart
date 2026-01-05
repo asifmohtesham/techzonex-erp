@@ -78,6 +78,7 @@ class DashboardController extends GetxController {
 
     // --- Stock ---
       case 'Item':
+        // statusField defaults to null, preventing the "Field not permitted: status" crash
         config = FrappeListConfig(titleField: 'item_name', subtitleField: 'item_code', imageField: 'image');
         break;
       case 'Material Request':
