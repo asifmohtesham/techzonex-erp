@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 class LoginController extends GetxController {
   // Key to access the form state from the View
@@ -56,7 +59,7 @@ class LoginController extends GetxController {
   void configureServerUrl() {
     String url = serverUrlController.text.trim();
     if (url.isEmpty) {
-      Get.snackbar('Error', 'Server URL cannot be empty', backgroundColor: Colors.red.withOpacity(0.1), colorText: Colors.red);
+      Get.snackbar('Error', 'Server URL cannot be empty', backgroundColor: Colors.red.withValues(alpha: 0.1), colorText: Colors.red);
       return;
     }
     // Auto-append https if missing for better UX
@@ -64,33 +67,92 @@ class LoginController extends GetxController {
       url = 'https://$url';
       serverUrlController.text = url;
     }
+    // Remove trailing slash to prevent double slashes in API calls
+    if (url.endsWith('/')) {
+      url = url.substring(0, url.length - 1);
+    }
+    serverUrlController.text = url;
     Get.back(); // Close Dialog
     Get.snackbar('Configuration', 'Server connected: $url',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.blue.withOpacity(0.1),
+        backgroundColor: Colors.blue.withValues(alpha: 0.1),
         colorText: Colors.blue
     );
   }
 
   Future<void> login() async {
     errorMessage.value = '';
+
+    // 1. Input Validation
     if (!loginFormKey.currentState!.validate()) return;
 
     isLoading.value = true;
+
+    final String baseUrl = serverUrlController.text;
+    // ERPNext Standard Login Endpoint
+    final Uri uri = Uri.parse('$baseUrl/api/method/login');
+
     try {
-      // Simulation of ERPNext API Call using the configured Server URL
-      final String baseUrl = serverUrlController.text;
-      print('Connecting to $baseUrl/api/method/login...');
+      // 2. Perform API Call
+      final response = await http.post(
+        uri,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: {
+          'usr': emailOrPhoneController.text.trim(),
+          'pwd': passwordController.text,
+        },
+      ).timeout(const Duration(seconds: 10)); // Fail fast on timeout
 
-      await Future.delayed(const Duration(seconds: 2));
+      // 3. Handle Response
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
 
-      Get.snackbar('Success', 'Logged in to $baseUrl',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green.withOpacity(0.1),
-          colorText: Colors.green
-      );
+        // ERPNext login success usually returns: { "message": "Logged In", "full_name": "..." }
+        if (body['message'] == 'Logged In') {
+
+          // CRITICAL: Capture Session Cookie (sid) for future requests
+          String? rawCookie = response.headers['set-cookie'];
+          if (rawCookie != null) {
+            // In a real app, store this securely (e.g., flutter_secure_storage)
+            print('Session ID captured: $rawCookie');
+          }
+
+          Get.snackbar('Success', 'Welcome, ${body['full_name']}',
+              snackPosition: SnackPosition.BOTTOM,
+              backgroundColor: Colors.green.withValues(alpha: 0.1),
+              colorText: Colors.green
+          );
+
+          // Proceed to Dashboard
+          // Get.offAllNamed('/home');
+
+        } else {
+          errorMessage.value = body['message'] ?? 'Login failed due to an unknown error.';
+        }
+      } else if (response.statusCode == 401 || response.statusCode == 403) {
+        errorMessage.value = 'Invalid credentials. Please check your username and password.';
+      } else {
+        // Try to parse specific server errors (often in 'exception' field)
+        try {
+          final errorBody = jsonDecode(response.body);
+          errorMessage.value = errorBody['exception'] ?? 'Server Error: ${response.statusCode}';
+        } catch (_) {
+          errorMessage.value = 'Server Error: ${response.statusCode}. Please try again later.';
+        }
+      }
+
     } catch (e) {
-      errorMessage.value = 'Connection failed. Please check your internet or credentials.';
+      // 4. Handle Network Exceptions
+      if (e.toString().contains('SocketException')) {
+        errorMessage.value = 'Could not connect to server. Check URL or Internet.';
+      } else if (e.toString().contains('TimeoutException')) {
+        errorMessage.value = 'Connection timed out. Server is slow to respond.';
+      } else {
+        errorMessage.value = 'An unexpected error occurred: $e';
+      }
     } finally {
       isLoading.value = false;
     }
