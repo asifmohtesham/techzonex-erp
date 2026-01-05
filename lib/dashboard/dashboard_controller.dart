@@ -57,28 +57,101 @@ class DashboardController extends GetxController {
   }
 
   /// Navigation Handler for DocTypes
+  /// Maps specific DocTypes to relevant UI configurations for the Generic ListView
   void navigateToDocTypeList(String module, String docType) {
     Get.back(); // Close Drawer
 
-    // Define custom configurations per DocType if needed
     FrappeListConfig config;
 
     switch (docType) {
-      case 'Item':
-        config = FrappeListConfig(titleField: 'item_name', subtitleField: 'item_code');
-        break;
-      case 'Customer':
-        config = FrappeListConfig(titleField: 'customer_name', subtitleField: 'customer_type');
-        break;
+    // --- Accounting ---
       case 'Sales Invoice':
+      case 'Purchase Invoice':
         config = FrappeListConfig(titleField: 'customer_name', subtitleField: 'grand_total', statusField: 'status');
         break;
+      case 'Journal Entry':
+        config = FrappeListConfig(titleField: 'voucher_type', subtitleField: 'posting_date', statusField: 'docstatus');
+        break;
+      case 'Payment Entry':
+        config = FrappeListConfig(titleField: 'party_name', subtitleField: 'paid_amount', statusField: 'payment_type');
+        break;
+
+    // --- Stock ---
+      case 'Item':
+        config = FrappeListConfig(titleField: 'item_name', subtitleField: 'item_code', imageField: 'image');
+        break;
+      case 'Material Request':
+        config = FrappeListConfig(titleField: 'transaction_date', subtitleField: 'schedule_date');
+        break;
+      case 'Stock Entry':
+        config = FrappeListConfig(titleField: 'stock_entry_type', subtitleField: 'purpose');
+        break;
+      case 'Delivery Note':
+      case 'Purchase Receipt':
+        config = FrappeListConfig(titleField: 'customer_name', subtitleField: 'grand_total');
+        break;
+
+    // --- Buying & Selling ---
+      case 'Customer':
+        config = FrappeListConfig(titleField: 'customer_name', subtitleField: 'customer_group', imageField: 'image');
+        break;
+      case 'Supplier':
+        config = FrappeListConfig(titleField: 'supplier_name', subtitleField: 'supplier_group', imageField: 'image');
+        break;
+      case 'Quotation':
+      case 'Sales Order':
+      case 'Purchase Order':
+      case 'Purchase Request':
+        config = FrappeListConfig(titleField: 'transaction_date', subtitleField: 'grand_total');
+        break;
+
+    // --- HR ---
+      case 'Employee':
+        config = FrappeListConfig(titleField: 'employee_name', subtitleField: 'department', imageField: 'image');
+        break;
+      case 'Leave Application':
+        config = FrappeListConfig(titleField: 'employee_name', subtitleField: 'leave_type');
+        break;
+      case 'Expense Claim':
+        config = FrappeListConfig(titleField: 'employee_name', subtitleField: 'total_claimed_amount');
+        break;
+      case 'Attendance':
+        config = FrappeListConfig(titleField: 'employee_name', subtitleField: 'attendance_date', statusField: 'status');
+        break;
+
+    // --- CRM ---
+      case 'Lead':
+        config = FrappeListConfig(titleField: 'lead_name', subtitleField: 'company_name', statusField: 'status');
+        break;
+      case 'Opportunity':
+        config = FrappeListConfig(titleField: 'customer_name', subtitleField: 'opportunity_amount');
+        break;
+      case 'Contact':
+        config = FrappeListConfig(titleField: 'first_name', subtitleField: 'email_id', statusField: 'status');
+        break;
+
+    // --- Projects ---
+      case 'Project':
+        config = FrappeListConfig(titleField: 'project_name', subtitleField: 'percent_complete', statusField: 'status');
+        break;
+      case 'Task':
+        config = FrappeListConfig(titleField: 'subject', subtitleField: 'exp_end_date', statusField: 'status');
+        break;
+      case 'Timesheet':
+        config = FrappeListConfig(titleField: 'employee_name', subtitleField: 'total_hours', statusField: 'status');
+        break;
+
+    // --- Support ---
+      case 'Issue':
+        config = FrappeListConfig(titleField: 'subject', subtitleField: 'raised_by', statusField: 'status');
+        break;
+
       default:
-      // Default fallbacks to 'name', 'modified', 'status'
+      // Default fallback: assumes standard 'name' and 'modified' fields exist
         config = FrappeListConfig();
     }
 
-    // Navigate to the Generic ListView
+    // Pass the tailored config to the Global ListView
     Get.to(() => FrappeListView(docType: docType, config: config));
   }
 

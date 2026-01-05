@@ -47,6 +47,8 @@ class LoginController extends GetxController {
     final String? savedUrl = await _storageService.getServerUrl();
     if (savedUrl != null && savedUrl.isNotEmpty) {
       serverUrlController.text = savedUrl;
+      // Configure ApiService with the loaded URL
+      _apiService.setBaseUrl(savedUrl);
     }
   }
 
@@ -99,6 +101,9 @@ class LoginController extends GetxController {
     // PERSISTENCE: Save to DB/LocalStorage
     _storageService.saveServerUrl(url);
 
+    // Update ApiService
+    _apiService.setBaseUrl(url);
+
     Get.back(); // Close Dialog
     GlobalSnackbar.showInfo(title: 'Configuration', message: 'Server connected: $url',);
   }
@@ -111,7 +116,20 @@ class LoginController extends GetxController {
 
     isLoading.value = true;
 
-    final String baseUrl = serverUrlController.text;
+    String baseUrl = serverUrlController.text.trim();
+    if (baseUrl.isEmpty) {
+       errorMessage.value = 'Server URL is not configured';
+       isLoading.value = false;
+       return;
+    }
+
+    // Ensure URL is sanitary if user modified it manually without saving
+    if (!baseUrl.startsWith('http')) baseUrl = 'https://$baseUrl';
+    if (baseUrl.endsWith('/')) baseUrl = baseUrl.substring(0, baseUrl.length - 1);
+    
+    // Update ApiService just in case
+    _apiService.setBaseUrl(baseUrl);
+
     // ERPNext Standard Login Endpoint
     final Uri uri = Uri.parse('$baseUrl/api/method/login');
 

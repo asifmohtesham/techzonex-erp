@@ -8,15 +8,64 @@ import 'package:techzonex_erp/widgets/global_snackbar.dart';
 class FrappeListConfig {
   final String titleField;
   final String subtitleField;
-  final String statusField;
-  final String imageField;
+  final String? statusField; // Nullable: Not all docs have status
+  final String? imageField;  // Nullable: Not all docs have images
 
   FrappeListConfig({
     this.titleField = 'name',
     this.subtitleField = 'modified',
     this.statusField = 'status',
-    this.imageField = 'image',
+    this.imageField, // Defaults to null
   });
+}
+
+/// Helper Class for Global Status Handling (Separation of Concerns)
+class FrappeStatusHelper {
+  /// Parses dynamic status values (int or String) into a displayable label
+  static String getLabel(dynamic value) {
+    if (value == null) return '';
+
+    // Handle standard ERPNext DocStatus integers
+    if (value is int) {
+      switch (value) {
+        case 0: return 'Draft';
+        case 1: return 'Submitted';
+        case 2: return 'Cancelled';
+        default: return value.toString();
+      }
+    }
+    // Handle String statuses (e.g., Workflow states)
+    return value.toString();
+  }
+
+  /// Returns the appropriate color based on the status label
+  static Color getColor(String status) {
+    switch (status.toLowerCase()) {
+    // Success / Good State
+      case 'paid':
+      case 'completed':
+      case 'active':
+      case 'converted':
+      case 'submitted':
+        return Colors.green;
+    // Info / Neutral State
+      case 'open':
+      case 'draft':
+      case 'pending':
+      case 'partly paid':
+        return Colors.orange;
+    // Danger / Bad State
+      case 'overdue':
+      case 'unpaid':
+      case 'cancelled':
+      case 'suspended':
+      case 'error':
+        return Colors.red;
+    // Default
+      default:
+        return Colors.grey;
+    }
+  }
 }
 
 /// A Generic Controller handling Pagination, Pull-to-Refresh, and Dynamic Fetching
@@ -69,10 +118,14 @@ class FrappeListController extends GetxController {
     }
 
     try {
-      // Construct Fields JSON
+      // Construct Fields List dynamically, filtering out nulls
       final List<String> fields = [
-        'name', config.titleField, config.subtitleField, config.statusField, config.imageField
-      ].toSet().toList(); // Remove duplicates
+        'name',
+        config.titleField,
+        config.subtitleField,
+        if (config.statusField != null) config.statusField!,
+        if (config.imageField != null) config.imageField!,
+      ].toSet().toList();
 
       final response = await _apiService.get(
         '/api/resource/$docType',
@@ -174,37 +227,45 @@ class FrappeListView extends StatelessWidget {
   }
 
   Widget _buildListItem(Map<String, dynamic> item, FrappeListConfig config) {
+    // Use the title field, or fallback to 'name' (ID)
+    final String title = item[config.titleField] != null ? item[config.titleField].toString() : (item['name'] ?? 'No Title');
+    final String subtitle = item[config.subtitleField] != null ? item[config.subtitleField].toString() : '';
+
+    // SAFE STATUS HANDLING: Fetch as dynamic, then parse via Helper
+    final dynamic rawStatus = config.statusField != null ? item[config.statusField] : null;
+    final String statusLabel = FrappeStatusHelper.getLabel(rawStatus);
+
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       leading: CircleAvatar(
         backgroundColor: Colors.blueAccent.withValues(alpha: 0.1),
         child: Text(
-          (item[config.titleField] ?? '?').toString().substring(0, 1).toUpperCase(),
+          title.isNotEmpty ? title.substring(0, 1).toUpperCase() : '?',
           style: const TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold),
         ),
       ),
       title: Text(
-        item[config.titleField] ?? 'No Title',
+        title,
         style: const TextStyle(fontWeight: FontWeight.w600),
       ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (config.subtitleField != 'modified')
-            Text(item[config.subtitleField]?.toString() ?? ''),
-          Text(
-            item['name'], // Always show ID
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
-          ),
+          if (subtitle.isNotEmpty) Text(subtitle),
+          if (config.titleField != 'name') // Don't duplicate if title is already ID
+            Text(
+              item['name'],
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
         ],
       ),
-      trailing: item[config.statusField] != null
+      trailing: statusLabel.isNotEmpty
           ? Chip(
         label: Text(
-          item[config.statusField],
+          statusLabel,
           style: const TextStyle(fontSize: 10, color: Colors.white),
         ),
-        backgroundColor: _getStatusColor(item[config.statusField]),
+        backgroundColor: FrappeStatusHelper.getColor(statusLabel),
         padding: EdgeInsets.zero,
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       )
@@ -213,15 +274,5 @@ class FrappeListView extends StatelessWidget {
         GlobalSnackbar.showInfo(title: 'Details', message: 'Opened ${item['name']}');
       },
     );
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'open': return Colors.green;
-      case 'submitted': return Colors.blue;
-      case 'cancelled': return Colors.red;
-      case 'draft': return Colors.orange;
-      default: return Colors.grey;
-    }
   }
 }
