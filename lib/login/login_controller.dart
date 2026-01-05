@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:techzonex_erp/widgets/global_snackbar.dart';
+import 'package:techzonex_erp/dashboard/dashboard_view.dart';
 
 class LoginController extends GetxController {
   // Key to access the form state from the View
@@ -59,7 +61,7 @@ class LoginController extends GetxController {
   void configureServerUrl() {
     String url = serverUrlController.text.trim();
     if (url.isEmpty) {
-      Get.snackbar('Error', 'Server URL cannot be empty', backgroundColor: Colors.red.withValues(alpha: 0.1), colorText: Colors.red);
+      GlobalSnackbar.showError(title: 'Error', message: 'Server URL cannot be empty',);
       return;
     }
     // Auto-append https if missing for better UX
@@ -73,11 +75,7 @@ class LoginController extends GetxController {
     }
     serverUrlController.text = url;
     Get.back(); // Close Dialog
-    Get.snackbar('Configuration', 'Server connected: $url',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.blue.withValues(alpha: 0.1),
-        colorText: Colors.blue
-    );
+    GlobalSnackbar.showInfo(title: 'Configuration', message: 'Server connected: $url',);
   }
 
   Future<void> login() async {
@@ -112,23 +110,22 @@ class LoginController extends GetxController {
 
         // ERPNext login success usually returns: { "message": "Logged In", "full_name": "..." }
         if (body['message'] == 'Logged In') {
-
           // CRITICAL: Capture Session Cookie (sid) for future requests
           String? rawCookie = response.headers['set-cookie'];
           if (rawCookie != null) {
-            // In a real app, store this securely (e.g., flutter_secure_storage)
             print('Session ID captured: $rawCookie');
           }
 
-          Get.snackbar('Success', 'Welcome, ${body['full_name']}',
-              snackPosition: SnackPosition.BOTTOM,
-              backgroundColor: Colors.green.withValues(alpha: 0.1),
-              colorText: Colors.green
+          GlobalSnackbar.showSuccess(
+            title: 'Success',
+            message: 'Welcome, ${body['full_name']}',
           );
 
-          // Proceed to Dashboard
-          // Get.offAllNamed('/home');
-
+          // Proceed to Dashboard with User Data
+          Get.offAll(() => const DashboardView(), arguments: {
+            'full_name': body['full_name'],
+            'user_id': emailOrPhoneController.text.trim(),
+          });
         } else {
           errorMessage.value = body['message'] ?? 'Login failed due to an unknown error.';
         }
@@ -153,6 +150,8 @@ class LoginController extends GetxController {
       } else {
         errorMessage.value = 'An unexpected error occurred: $e';
       }
+      // REFACTORED: Show persistent error toast
+      GlobalSnackbar.showError(title: 'Connection Error', message: errorMessage.value);
     } finally {
       isLoading.value = false;
     }
