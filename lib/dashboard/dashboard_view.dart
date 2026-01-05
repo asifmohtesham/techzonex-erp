@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'dashboard_controller.dart';
+import 'package:techzonex_erp/dashboard/dashboard_controller.dart';
 
 class DashboardView extends StatelessWidget {
   const DashboardView({super.key});
@@ -48,43 +48,87 @@ class DashboardView extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             accountEmail: Text(controller.userId.value),
+            // Shows arrow icon and handles toggle interaction
+            onDetailsPressed: controller.toggleAccountMenu,
           )),
 
-          // Navigation Items
-          ListTile(
-            leading: const Icon(Icons.dashboard_outlined),
-            title: const Text('Overview'),
-            onTap: () => Get.back(), // Close drawer
+          // Dynamic Menu Content
+          Expanded(
+            child: Obx(() => controller.isAccountMenuExpanded.value
+                ? _buildAccountMenu(controller)
+                : _buildMainMenu(controller)),
           ),
-          ListTile(
-            leading: const Icon(Icons.inventory_2_outlined),
-            title: const Text('Inventory'),
-            onTap: () {},
-          ),
-          ListTile(
-            leading: const Icon(Icons.people_outline),
-            title: const Text('HR & Payroll'),
-            onTap: () {},
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.settings_outlined),
-            title: const Text('Settings'),
-            onTap: () {},
-          ),
-          const Spacer(), // Pushes Logout to the bottom
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.logout, color: Colors.red),
-            title: const Text(
-              'Logout',
-              style: TextStyle(color: Colors.red),
-            ),
-            onTap: controller.logout,
-          ),
-          const SizedBox(height: 20),
         ],
       ),
+    );
+  }
+
+  /// The Main Navigation (Modules & Overview)
+  /// Dynamically builds ExpansionTiles for ERP Modules
+  Widget _buildMainMenu(DashboardController controller) {
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        ListTile(
+          leading: const Icon(Icons.dashboard_outlined),
+          title: const Text('Overview'),
+          onTap: () => Get.back(),
+        ),
+        const Divider(),
+
+        // Iterate through the Modules map defined in the Controller
+        ...controller.erpModules.entries.map((entry) {
+          final String moduleName = entry.key;
+          final List<String> docTypes = entry.value;
+
+          return ExpansionTile(
+            leading: Icon(controller.moduleIcons[moduleName] ?? Icons.folder_open),
+            title: Text(moduleName),
+            childrenPadding: const EdgeInsets.only(left: 16.0),
+            children: docTypes.map((docType) {
+              return ListTile(
+                dense: true,
+                leading: const Icon(Icons.article_outlined, size: 20, color: Colors.grey),
+                title: Text(docType),
+                onTap: () => controller.navigateToDocTypeList(moduleName, docType),
+              );
+            }).toList(),
+          );
+        }),
+      ],
+    );
+  }
+
+  /// The Profile Context Menu (Profile, Settings, Logout)
+  Widget _buildAccountMenu(DashboardController controller) {
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        ListTile(
+          leading: const Icon(Icons.person_outline),
+          title: const Text('Profile'),
+          onTap: controller.navigateToProfile,
+        ),
+        ListTile(
+          leading: const Icon(Icons.tune_outlined),
+          title: const Text('Session Defaults'),
+          onTap: controller.openSessionDefaults,
+        ),
+        ListTile(
+          leading: const Icon(Icons.info_outline),
+          title: const Text('About'),
+          onTap: controller.showAboutDialog,
+        ),
+        const Divider(),
+        ListTile(
+          leading: const Icon(Icons.logout, color: Colors.red),
+          title: const Text(
+            'Logout',
+            style: TextStyle(color: Colors.red),
+          ),
+          onTap: controller.logout,
+        ),
+      ],
     );
   }
 }
