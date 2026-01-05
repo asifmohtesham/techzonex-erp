@@ -4,7 +4,6 @@ import 'login_controller.dart';
 
 class LoginView extends StatelessWidget {
   final LoginController controller = Get.put(LoginController());
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>(); // Key for validation
 
   LoginView({super.key});
 
@@ -15,8 +14,7 @@ class LoginView extends StatelessWidget {
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
           child: Form(
-            key: _formKey, // Assign the key to the Form
-            id: 1, // GetX nested key for validation access
+            key: controller.loginFormKey,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -86,13 +84,10 @@ class LoginView extends StatelessWidget {
                 Obx(() => SizedBox(
                   height: 50,
                   child: ElevatedButton(
+                    // Logic is simplified: Controller handles validation check
                     onPressed: controller.isLoading.value
                         ? null
-                        : () {
-                      if (_formKey.currentState!.validate()) {
-                        controller.login();
-                      }
-                    },
+                        : controller.login,
                     style: ElevatedButton.styleFrom(
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),

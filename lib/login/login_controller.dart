@@ -2,6 +2,9 @@ import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 
 class LoginController extends GetxController {
+  // Key to access the form state from the View
+  final GlobalKey<FormState> loginFormKey = GlobalKey<FormState>();
+
   final emailOrPhoneController = TextEditingController();
   final passwordController = TextEditingController();
 
@@ -50,7 +53,8 @@ class LoginController extends GetxController {
     // Reset previous errors
     errorMessage.value = '';
 
-    if (!Get.nestedKey(1)!.currentState!.validate()) {
+    // Validate using the controller's form key
+    if (!loginFormKey.currentState!.validate()) {
       return; // Stop if form is invalid
     }
 
@@ -66,7 +70,7 @@ class LoginController extends GetxController {
       // Mock Success
       Get.snackbar('Success', 'Logged in successfully',
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green.withOpacity(0.1),
+          backgroundColor: Colors.green.withValues(alpha: 0.1),
           colorText: Colors.green
       );
 
