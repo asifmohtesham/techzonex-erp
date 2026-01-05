@@ -67,7 +67,7 @@ class DashboardController extends GetxController {
     // --- Accounting ---
       case 'Sales Invoice':
       case 'Purchase Invoice':
-        config = FrappeListConfig(titleField: 'customer_name', subtitleField: 'grand_total', statusField: 'status');
+        config = FrappeListConfig(titleField: 'supplier_name', subtitleField: 'grand_total', statusField: 'status');
         break;
       case 'Journal Entry':
         config = FrappeListConfig(titleField: 'voucher_type', subtitleField: 'posting_date', statusField: 'docstatus');
@@ -89,7 +89,7 @@ class DashboardController extends GetxController {
         break;
       case 'Delivery Note':
       case 'Purchase Receipt':
-        config = FrappeListConfig(titleField: 'customer_name', subtitleField: 'grand_total');
+        config = FrappeListConfig(titleField: 'supplier_name', subtitleField: 'grand_total', statusField: 'status');
         break;
 
     // --- Buying & Selling ---
@@ -125,7 +125,7 @@ class DashboardController extends GetxController {
         config = FrappeListConfig(titleField: 'lead_name', subtitleField: 'company_name', statusField: 'status');
         break;
       case 'Opportunity':
-        config = FrappeListConfig(titleField: 'customer_name', subtitleField: 'opportunity_amount');
+        config = FrappeListConfig(titleField: 'party_name', subtitleField: 'opportunity_amount', statusField: 'status');
         break;
       case 'Contact':
         config = FrappeListConfig(titleField: 'first_name', subtitleField: 'email_id', statusField: 'status');
