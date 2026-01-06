@@ -7,10 +7,10 @@ import 'package:techzonex_erp/widgets/global_snackbar.dart';
 
 /// Configuration class to map DocType fields to UI elements dynamically
 class FrappeListConfig {
-  final String titleField;
-  final String subtitleField;
-  final String? statusField; // Nullable: Not all docs have status
-  final String? imageField;  // Nullable: Not all docs have images
+  String titleField;
+  String subtitleField;
+  String? statusField; // Nullable: Not all docs have status
+  String? imageField;  // Nullable: Not all docs have images
 
   FrappeListConfig({
     this.titleField = 'name',
@@ -72,11 +72,13 @@ class FrappeStatusHelper {
 /// A Generic Controller handling Pagination, Pull-to-Refresh, and Dynamic Fetching
 class FrappeListController extends GetxController {
   final String docType;
-  final FrappeListConfig config;
   final ApiService _apiService = Get.find();
 
+  // Config is now an observable that starts with defaults
+  var config = FrappeListConfig().obs;
+
   var itemList = <Map<String, dynamic>>[].obs;
-  var isLoading = false.obs;
+  var isLoading = true.obs; // Starts true for metadata fetch
   var isMoreLoading = false.obs;
 
   // Pagination State
@@ -86,12 +88,12 @@ class FrappeListController extends GetxController {
 
   final ScrollController scrollController = ScrollController();
 
-  FrappeListController({required this.docType, required this.config});
+  FrappeListController({required this.docType});
 
   @override
   void onInit() {
     super.onInit();
-    fetchItems(isRefresh: true);
+    _initData();
     scrollController.addListener(_onScroll);
   }
 
@@ -99,6 +101,69 @@ class FrappeListController extends GetxController {
   void onClose() {
     scrollController.dispose();
     super.onClose();
+  }
+
+  Future<void> _initData() async {
+    isLoading.value = true;
+    await fetchMeta();
+    await fetchItems(isRefresh: true);
+    isLoading.value = false;
+  }
+
+  /// 1. Fetch DocType Metadata to configure the UI dynamically
+  Future<void> fetchMeta() async {
+    try {
+      final response = await _apiService.get('/api/resource/DocType/$docType');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body)['data'];
+
+        final newConfig = FrappeListConfig();
+
+        // 1. Title Field
+        if (data['title_field'] != null) {
+          newConfig.titleField = data['title_field'];
+        }
+
+        // 2. Image Field
+        if (data['image_field'] != null) {
+          newConfig.imageField = data['image_field'];
+        }
+
+        // 3. Status Field Logic
+        // If submittable, standard status is 'docstatus' (int).
+        // Otherwise, check if a 'status' field exists in the field list.
+        bool isSubmittable = data['is_submittable'] == 1;
+        if (isSubmittable) {
+          newConfig.statusField = 'docstatus';
+        } else {
+          // Check fields list for 'status'
+          List<dynamic> fields = data['fields'] ?? [];
+          var hasStatus = fields.any((f) => f['fieldname'] == 'status');
+          if (hasStatus) {
+            newConfig.statusField = 'status';
+          }
+        }
+
+        // 4. Subtitle Field (Heuristic: Use first search field that isn't title)
+        if (data['search_fields'] != null) {
+          String searchFieldsStr = data['search_fields'];
+          List<String> parts = searchFieldsStr.split(',').map((e) => e.trim()).toList();
+
+          for (var field in parts) {
+            if (field != 'name' && field != newConfig.titleField) {
+              newConfig.subtitleField = field;
+              break;
+            }
+          }
+        }
+
+        config.value = newConfig;
+      }
+    } catch (e) {
+      print('Meta fetch error: $e');
+      // Fail silently and use defaults
+    }
   }
 
   void _onScroll() {
@@ -113,19 +178,21 @@ class FrappeListController extends GetxController {
     if (isRefresh) {
       _limitStart = 0;
       _hasReachedEnd = false;
-      isLoading.value = true;
+      // Note: We don't set isLoading=true here if called from _initData
+      // to prevent double flickering, but useful for pull-to-refresh.
     } else {
       isMoreLoading.value = true;
     }
 
     try {
-      // Construct Fields List dynamically, filtering out nulls
+      final currentConfig = config.value;
+
       final List<String> fields = [
         'name',
-        config.titleField,
-        config.subtitleField,
-        if (config.statusField != null) config.statusField!,
-        if (config.imageField != null) config.imageField!,
+        currentConfig.titleField,
+        currentConfig.subtitleField,
+        if (currentConfig.statusField != null) currentConfig.statusField!,
+        if (currentConfig.imageField != null) currentConfig.imageField!,
       ].toSet().toList();
 
       final response = await _apiService.get(
@@ -159,7 +226,6 @@ class FrappeListController extends GetxController {
     } catch (e) {
       GlobalSnackbar.showError(title: 'Network Error', message: e.toString());
     } finally {
-      isLoading.value = false;
       isMoreLoading.value = false;
     }
   }
@@ -168,34 +234,17 @@ class FrappeListController extends GetxController {
 /// The Reusable View Widget
 class FrappeListView extends StatelessWidget {
   final String docType;
-  final FrappeListConfig? config;
 
-  const FrappeListView({
-    super.key,
-    required this.docType,
-    this.config,
-  });
+  const FrappeListView({super.key,required this.docType,});
 
   @override
   Widget build(BuildContext context) {
-    // Unique Tag to allow multiple list views (e.g. Items and Customers) to exist simultaneously
-    final controller = Get.put(
-      FrappeListController(
-        docType: docType,
-        config: config ?? FrappeListConfig(),
-      ),
-      tag: docType,
-    );
+    // Tag is essential to separate state for different DocTypes
+    final controller = Get.put(FrappeListController(docType: docType), tag: docType);
 
     return Scaffold(
       appBar: AppBar(
         title: Text('$docType List'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: () => GlobalSnackbar.showInfo(title: 'Filters', message: 'Not implemented yet'),
-          )
-        ],
       ),
       body: Obx(() {
         if (controller.isLoading.value) {
@@ -204,21 +253,18 @@ class FrappeListView extends StatelessWidget {
 
         return RefreshIndicator(
           onRefresh: () async => await controller.fetchItems(isRefresh: true),
-          child: SafeArea(
-            child: ListView.separated(
-              controller: controller.scrollController,
-              padding: const EdgeInsets.all(12),
-              itemCount: controller.itemList.length + (controller.isMoreLoading.value ? 1 : 0),
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (ctx, index) {
-                if (index == controller.itemList.length) {
-                  return const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()));
-                }
-
-                final item = controller.itemList[index];
-                return _buildListItem(item, controller.config);
-              },
-            ),
+          child: ListView.separated(
+            controller: controller.scrollController,
+            padding: const EdgeInsets.all(12),
+            itemCount: controller.itemList.length + (controller.isMoreLoading.value ? 1 : 0),
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (ctx, index) {
+              if (index == controller.itemList.length) {
+                return const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()));
+              }
+              final item = controller.itemList[index];
+              return _buildListItem(item, controller.config.value);
+            },
           ),
         );
       }),
@@ -230,11 +276,9 @@ class FrappeListView extends StatelessWidget {
   }
 
   Widget _buildListItem(Map<String, dynamic> item, FrappeListConfig config) {
-    // Use the title field, or fallback to 'name' (ID)
     final String title = item[config.titleField] != null ? item[config.titleField].toString() : (item['name'] ?? 'No Title');
     final String subtitle = item[config.subtitleField] != null ? item[config.subtitleField].toString() : '';
 
-    // SAFE STATUS HANDLING: Fetch as dynamic, then parse via Helper
     final dynamic rawStatus = config.statusField != null ? item[config.statusField] : null;
     final String statusLabel = FrappeStatusHelper.getLabel(rawStatus);
 
@@ -247,35 +291,24 @@ class FrappeListView extends StatelessWidget {
           style: const TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold),
         ),
       ),
-      title: Text(
-        title,
-        style: const TextStyle(fontWeight: FontWeight.w600),
-      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (subtitle.isNotEmpty) Text(subtitle),
-          if (config.titleField != 'name') // Don't duplicate if title is already ID
-            Text(
-              item['name'],
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
-            ),
+          if (config.titleField != 'name')
+            Text(item['name'], style: const TextStyle(fontSize: 12, color: Colors.grey)),
         ],
       ),
       trailing: statusLabel.isNotEmpty
           ? Chip(
-        label: Text(
-          statusLabel,
-          style: const TextStyle(fontSize: 10, color: Colors.white),
-        ),
+        label: Text(statusLabel, style: const TextStyle(fontSize: 10, color: Colors.white)),
         backgroundColor: FrappeStatusHelper.getColour(statusLabel),
         padding: EdgeInsets.zero,
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       )
           : null,
-      onTap: () {
-        GlobalSnackbar.showInfo(title: 'Details', message: 'Opened ${item['name']}');
-      },
+      onTap: () => GlobalSnackbar.showInfo(title: 'Details', message: 'Opened ${item['name']}'),
     );
   }
 }
