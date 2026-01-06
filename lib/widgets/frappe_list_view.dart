@@ -254,18 +254,23 @@ class FrappeListView extends StatelessWidget {
 
         return RefreshIndicator(
           onRefresh: () async => await controller.fetchItems(isRefresh: true),
-          child: ListView.separated(
+          child: Scrollbar(
+            // Connect to the same controller used by ListView
             controller: controller.scrollController,
-            padding: const EdgeInsets.all(12),
-            itemCount: controller.itemList.length + (controller.isMoreLoading.value ? 1 : 0),
-            separatorBuilder: (_, __) => const Divider(height: 1),
-            itemBuilder: (ctx, index) {
-              if (index == controller.itemList.length) {
-                return const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()));
-              }
-              final item = controller.itemList[index];
-              return _buildListItem(item, controller.config.value);
-            },
+            thumbVisibility: true, // Always show scrollbar when scrolling
+            child: ListView.separated(
+              controller: controller.scrollController,
+              padding: const EdgeInsets.all(12),
+              itemCount: controller.itemList.length + (controller.isMoreLoading.value ? 1 : 0),
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (ctx, index) {
+                if (index == controller.itemList.length) {
+                  return const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()));
+                }
+                final item = controller.itemList[index];
+                return _buildListItem(item, controller.config.value);
+              },
+            ),
           ),
         );
       }),

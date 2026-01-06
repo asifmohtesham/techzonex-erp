@@ -215,13 +215,49 @@ class FrappeFormView extends StatelessWidget {
     final String fieldName = field['fieldname'];
     final bool isReqd = field['reqd'] == 1;
 
-    // 1. SELECT FIELD
+    // 1. SELECT FIELD (Robust Fix)
     if (fieldType == 'Select') {
-      List<String> options = (field['options'] ?? '').toString().split('\n');
+      // Parse options, trim whitespace, and remove empty entries
+      List<String> options = (field['options'] ?? '')
+          .toString()
+          .split('\n')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+
+      // Retrieve the current value from the controller
+      String? currentValue = controller.formValues[fieldName]?.toString();
+
+      // CRITICAL FIX: Ensure currentValue exists in the options list.
+      // If the backend sends a value (e.g., 'EMP/') that isn't in the options list,
+      // we must add it temporarily to prevent the "exactly one item" crash.
+      if (currentValue != null &&
+          currentValue.isNotEmpty &&
+          !options.contains(currentValue)) {
+        options.add(currentValue);
+      }
+
+      // If options are completely empty (edge case), add a placeholder to prevent crash
+      if (options.isEmpty) {
+        return TextFormField(
+          initialValue: currentValue,
+          decoration: InputDecoration(labelText: label, helperText: 'No options defined'),
+          readOnly: true,
+        );
+      }
+
+      // Ensure value is null if it's an empty string not in options
+      if (currentValue == '') currentValue = null;
+
       return DropdownButtonFormField<String>(
         decoration: InputDecoration(labelText: label),
-        value: controller.formValues[fieldName], // ensure this matches one of the options or is null
-        items: options.map((opt) => DropdownMenuItem(value: opt, child: Text(opt))).toList(),
+        value: currentValue,
+        items: options.map((opt) {
+          return DropdownMenuItem<String>(
+            value: opt,
+            child: Text(opt),
+          );
+        }).toList(),
         onChanged: (val) => controller.formValues[fieldName] = val,
         validator: (val) => isReqd && (val == null || val.isEmpty) ? 'Required' : null,
       );
