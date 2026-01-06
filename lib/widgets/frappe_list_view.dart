@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:techzonex_erp/services/api_service.dart';
 import 'package:techzonex_erp/widgets/global_snackbar.dart';
+import 'package:techzonex_erp/widgets/frappe_form_view.dart';
 
 /// Configuration class to map DocType fields to UI elements dynamically
 class FrappeListConfig {
@@ -269,7 +270,15 @@ class FrappeListView extends StatelessWidget {
         );
       }),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => GlobalSnackbar.showInfo(title: 'Action', message: 'Create New $docType'),
+        onPressed: () async {
+          // Navigate to Form View with NO name (Create Mode)
+          final bool? result = await Get.to(() => FrappeFormView(docType: docType));
+
+          // If result is true (saved), refresh the list
+          if (result == true) {
+            controller.fetchItems(isRefresh: true);
+          }
+        },
         child: const Icon(Icons.add),
       ),
     );
@@ -281,6 +290,7 @@ class FrappeListView extends StatelessWidget {
 
     final dynamic rawStatus = config.statusField != null ? item[config.statusField] : null;
     final String statusLabel = FrappeStatusHelper.getLabel(rawStatus);
+    final controller = Get.put(FrappeListController(docType: docType), tag: docType);
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -308,7 +318,18 @@ class FrappeListView extends StatelessWidget {
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       )
           : null,
-      onTap: () => GlobalSnackbar.showInfo(title: 'Details', message: 'Opened ${item['name']}'),
+      // UPDATED onTap: Navigate to Edit Form
+      onTap: () async {
+        final bool? result = await Get.to(() => FrappeFormView(
+          docType: controller.docType, // Use controller's docType context
+          name: item['name'], // Pass the document name for fetching
+        ));
+
+        // If result is true (updated/deleted), refresh the list
+        if (result == true) {
+          controller.fetchItems(isRefresh: true);
+        }
+      },
     );
   }
 }

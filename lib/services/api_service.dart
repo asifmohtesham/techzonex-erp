@@ -37,4 +37,20 @@ class ApiService extends GetxService {
     final uri = Uri.parse('$_baseUrl$endpoint');
     return http.post(uri, headers: _headers, body: body);
   }
+
+  /// Generic PUT helper for Updates
+  Future<http.Response> put(String endpoint, {Object? body}) async {
+    if (_baseUrl.isEmpty) throw Exception('Server URL not configured');
+
+    final uri = Uri.parse('$_baseUrl$endpoint');
+    return http.put(uri, headers: _headers, body: body);
+  }
+
+  /// Generic DELETE helper
+  Future<http.Response> delete(String endpoint) async {
+    if (_baseUrl.isEmpty) throw Exception('Server URL not configured');
+
+    final uri = Uri.parse('$_baseUrl$endpoint');
+    return http.delete(uri, headers: _headers);
+  }
 }
